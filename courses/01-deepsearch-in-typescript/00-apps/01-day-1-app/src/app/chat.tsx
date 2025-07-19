@@ -5,6 +5,7 @@ import { useChat } from "@ai-sdk/react";
 import { Loader2 } from "lucide-react";
 import { ChatMessage } from "~/components/chat-message";
 import { SignInModal } from "~/components/sign-in-modal";
+import { DefaultChatTransport } from "ai";
 
 interface ChatProps {
   userName: string;
@@ -12,8 +13,16 @@ interface ChatProps {
 }
 
 export const ChatPage = ({ userName, isAuthenticated }: ChatProps) => {
-  const { messages, input, handleInputChange, handleSubmit, isLoading } =
-    useChat();
+  const { messages, sendMessage } = useChat({
+    transport: new DefaultChatTransport({
+      api: "/api/chat",
+    }),
+    maxSteps: 5,
+  });
+
+  console.log("--- messages");
+  console.log(messages);
+
   const [showSignInModal, setShowSignInModal] = useState(false);
 
   const handleFormSubmit = (e: React.FormEvent) => {
@@ -25,7 +34,12 @@ export const ChatPage = ({ userName, isAuthenticated }: ChatProps) => {
     }
 
     // If authenticated, proceed with normal submission
-    handleSubmit(e);
+    const form = e.target as HTMLFormElement;
+    const input = form.querySelector("input");
+    if (input) {
+      sendMessage({ text: input.value });
+      input.value = "";
+    }
   };
 
   return (
@@ -40,7 +54,7 @@ export const ChatPage = ({ userName, isAuthenticated }: ChatProps) => {
             return (
               <ChatMessage
                 key={index}
-                text={message.content}
+                parts={message.parts || []}
                 role={message.role}
                 userName={userName}
               />
@@ -55,8 +69,6 @@ export const ChatPage = ({ userName, isAuthenticated }: ChatProps) => {
           >
             <div className="flex gap-2">
               <input
-                value={input}
-                onChange={handleInputChange}
                 placeholder={
                   isAuthenticated
                     ? "Say something..."
@@ -68,16 +80,9 @@ export const ChatPage = ({ userName, isAuthenticated }: ChatProps) => {
               />
               <button
                 type="submit"
-                disabled={isLoading}
                 className="rounded bg-gray-700 px-4 py-2 text-white hover:bg-gray-600 focus:border-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:opacity-50 disabled:hover:bg-gray-700"
               >
-                {isLoading ? (
-                  <Loader2 className="size-4 animate-spin" />
-                ) : isAuthenticated ? (
-                  "Send"
-                ) : (
-                  "Sign In"
-                )}
+                {isAuthenticated ? "Send" : "Sign In"}
               </button>
             </div>
           </form>

@@ -1,6 +1,6 @@
-import { createPerplexity } from "@ai-sdk/perplexity";
+import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 
-const perplexity = createPerplexity({
-  apiKey: process.env.PERPLEXITY_API_KEY ?? "",
+const openrouter = createOpenRouter({
+  apiKey: process.env.OPENROUTER_API_KEY,
 });
-export const model = perplexity("sonar");
+export const model = openrouter.chat("google/gemini-flash-1.5");
