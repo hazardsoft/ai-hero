@@ -3,6 +3,7 @@ import { z } from "zod";
 import { auth } from "~/server/auth";
 import { model } from "~/models";
 import { searchSerper } from "~/serper";
+import { checkUserRateLimit, recordUserRequest } from "~/server/db/queries";
 
 export const maxDuration = 60;
 
@@ -14,6 +15,27 @@ export async function POST(request: Request) {
   }
 
   const { messages }: { messages: UIMessage[] } = await request.json();
+
+  // Check rate limit
+  const rateLimit = await checkUserRateLimit(session.user.id);
+
+  if (!rateLimit.allowed) {
+    return new Response(
+      JSON.stringify({
+        error: "Rate limit exceeded",
+        message: `You have exceeded the daily limit of 50 requests. You have used ${rateLimit.total} requests today.`,
+        remaining: rateLimit.remaining,
+        total: rateLimit.total,
+      }),
+      {
+        status: 429,
+        headers: { "Content-Type": "application/json" },
+      },
+    );
+  }
+
+  // Record the request
+  await recordUserRequest(session.user.id);
 
   const result = streamText({
     model,
