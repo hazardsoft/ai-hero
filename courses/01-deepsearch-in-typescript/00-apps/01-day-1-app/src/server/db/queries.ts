@@ -84,13 +84,17 @@ export async function upsertChat(opts: {
   const { userId, chatId, title, messages: messageList } = opts;
 
   // Check if chat exists and belongs to the user
-  const existingChat = await db
-    .select()
-    .from(chats)
-    .where(and(eq(chats.id, chatId), eq(chats.userId, userId)))
-    .limit(1);
+  const existingChat = await db.query.chats.findFirst({
+    where: and(eq(chats.id, chatId)),
+  });
 
-  if (existingChat.length > 0) {
+  if (existingChat) {
+    if (existingChat.userId !== userId) {
+      throw new Error(
+        `Chat with ID ${chatId} already exists under a different user`,
+      );
+    }
+
     // Chat exists, delete all existing messages and replace them
     await db.delete(messages).where(eq(messages.chatId, chatId));
 
@@ -103,19 +107,6 @@ export async function upsertChat(opts: {
       })
       .where(eq(chats.id, chatId));
   } else {
-    // Check if chat exists under a different user
-    const chatUnderDifferentUser = await db
-      .select()
-      .from(chats)
-      .where(eq(chats.id, chatId))
-      .limit(1);
-
-    if (chatUnderDifferentUser.length > 0) {
-      throw new Error(
-        `Chat with ID ${chatId} already exists under a different user`,
-      );
-    }
-
     // Create new chat
     await db.insert(chats).values({
       id: chatId,
@@ -138,41 +129,40 @@ export async function upsertChat(opts: {
 }
 
 export async function getChat(chatId: string, userId: string) {
-  const chat = await db
-    .select()
-    .from(chats)
-    .where(and(eq(chats.id, chatId), eq(chats.userId, userId)))
-    .limit(1);
+  const chat = await db.query.chats.findFirst({
+    where: and(eq(chats.id, chatId), eq(chats.userId, userId)),
+  });
 
-  if (chat.length === 0) {
+  if (!chat) {
     return null;
   }
 
-  const chatMessages = await db
-    .select()
-    .from(messages)
-    .where(eq(messages.chatId, chatId))
-    .orderBy(asc(messages.order));
+  const chatMessages = await db.query.messages.findMany({
+    columns: {
+      id: true,
+      role: true,
+      parts: true,
+    },
+    where: eq(messages.chatId, chatId),
+    orderBy: asc(messages.order),
+  });
 
   return {
-    ...chat[0],
-    messages: chatMessages.map((msg) => ({
-      id: msg.id,
-      role: msg.role,
-      parts: msg.parts,
-    })),
+    ...chat,
+    messages: chatMessages,
   };
 }
 
 export async function getChats(userId: string) {
-  return await db
-    .select({
-      id: chats.id,
-      title: chats.title,
-      createdAt: chats.createdAt,
-      updatedAt: chats.updatedAt,
-    })
-    .from(chats)
-    .where(eq(chats.userId, userId))
-    .orderBy(desc(chats.updatedAt));
+  const userChats = await db.query.chats.findMany({
+    columns: {
+      id: true,
+      title: true,
+      createdAt: true,
+      updatedAt: true,
+    },
+    where: eq(chats.userId, userId),
+    orderBy: desc(chats.updatedAt),
+  });
+  return userChats;
 }
