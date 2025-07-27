@@ -32,7 +32,7 @@ export const users = createTable("user", {
   emailVerified: timestamp("email_verified", {
     mode: "date",
     withTimezone: true,
-  }).default(sql`CURRENT_TIMESTAMP`),
+  }).defaultNow(),
   image: varchar("image", { length: 255 }),
   isAdmin: boolean("is_admin").notNull().default(false),
 });
@@ -125,7 +125,7 @@ export const userRequests = createTable(
       withTimezone: true,
     })
       .notNull()
-      .default(sql`CURRENT_TIMESTAMP`),
+      .defaultNow(),
   },
   (request) => ({
     userIdIdx: index("user_request_user_id_idx").on(request.userId),
@@ -150,13 +150,13 @@ export const chats = createTable(
       withTimezone: true,
     })
       .notNull()
-      .default(sql`CURRENT_TIMESTAMP`),
+      .defaultNow(),
     updatedAt: timestamp("updated_at", {
       mode: "date",
       withTimezone: true,
     })
       .notNull()
-      .default(sql`CURRENT_TIMESTAMP`),
+      .defaultNow(),
   },
   (chat) => ({
     userIdIdx: index("chat_user_id_idx").on(chat.userId),
@@ -187,7 +187,7 @@ export const messages = createTable(
       withTimezone: true,
     })
       .notNull()
-      .default(sql`CURRENT_TIMESTAMP`),
+      .defaultNow(),
   },
   (message) => ({
     chatIdIdx: index("message_chat_id_idx").on(message.chatId),
