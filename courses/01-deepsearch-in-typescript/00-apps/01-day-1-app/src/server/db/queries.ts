@@ -128,41 +128,23 @@ export async function upsertChat(opts: {
   }
 }
 
-export async function getChat(chatId: string, userId: string) {
+export const getChat = async (chatId: string, userId: string) => {
   const chat = await db.query.chats.findFirst({
     where: and(eq(chats.id, chatId), eq(chats.userId, userId)),
-  });
-
-  if (!chat) {
-    return null;
-  }
-
-  const chatMessages = await db.query.messages.findMany({
-    columns: {
-      id: true,
-      role: true,
-      parts: true,
+    with: {
+      messages: {
+        orderBy: asc(messages.order),
+      },
     },
-    where: eq(messages.chatId, chatId),
-    orderBy: asc(messages.order),
   });
 
-  return {
-    ...chat,
-    messages: chatMessages,
-  };
-}
+  return chat ?? null;
+};
 
-export async function getChats(userId: string) {
+export const getChats = async (userId: string) => {
   const userChats = await db.query.chats.findMany({
-    columns: {
-      id: true,
-      title: true,
-      createdAt: true,
-      updatedAt: true,
-    },
     where: eq(chats.userId, userId),
     orderBy: desc(chats.updatedAt),
   });
   return userChats;
-}
+};
